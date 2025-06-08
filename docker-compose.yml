@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  berry-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: berry-api
+    ports:
+      - "3000:3000"
+    environment:
+      - RUST_LOG=info
+      - BIND_ADDRESS=0.0.0.0:3000
+      - CONFIG_PATH=/app/config.toml
+    volumes:
+      # 挂载配置文件
+      - config.toml:/app/config.toml:ro
+    restart: unless-stopped

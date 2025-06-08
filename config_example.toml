@@ -1,0 +1,278 @@
+# Berry API 负载均衡配置示例
+# 这个配置文件展示了如何设置完整的负载均衡后端系统
+
+# 全局设置
+[settings]
+health_check_interval_seconds = 30    # 健康检查间隔（秒）
+request_timeout_seconds = 30          # 请求超时时间（秒）
+max_retries = 3                       # 最大重试次数
+circuit_breaker_failure_threshold = 5 # 熔断器失败阈值
+circuit_breaker_timeout_seconds = 60  # 熔断器超时时间（秒）
+
+# ===== 用户令牌配置 =====
+
+# 管理员用户 - 可以访问所有模型
+[users.admin]
+name = "Administrator"
+token = "berry-admin-token-12345"
+allowed_models = []  # 空数组表示允许访问所有模型
+enabled = true
+tags = ["admin", "unlimited"]
+
+# 普通用户 - 只能访问指定模型
+[users.user1]
+name = "Regular User 1"
+token = "berry-user1-token-67890"
+allowed_models = ["gpt_3_5_turbo", "fast_chat"]  # 只能访问这些模型（使用模型ID）
+enabled = true
+tags = ["user", "basic"]
+
+# 高级用户 - 可以访问高级模型
+[users.premium]
+name = "Premium User"
+token = "berry-premium-token-abcde"
+allowed_models = ["gpt_4", "gpt_4_turbo", "premium", "claude_3"]  # 使用模型ID
+enabled = true
+tags = ["premium", "advanced"]
+
+# 测试用户 - 已禁用
+[users.test]
+name = "Test User"
+token = "berry-test-token-fghij"
+allowed_models = ["test"]
+enabled = false  # 已禁用
+tags = ["test"]
+
+# ===== 定义 Provider（AI服务提供商）=====
+
+# OpenAI 主要账户
+[providers.openai-primary]
+name = "OpenAI Primary Account"
+base_url = "https://api.openai.com/v1"
+api_key = "sk-your-openai-primary-key-here"
+models = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+# OpenAI 备用账户
+[providers.openai-secondary]
+name = "OpenAI Secondary Account"
+base_url = "https://api.openai.com/v1"
+api_key = "sk-your-openai-secondary-key-here"
+models = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "gpt-4o", "gpt-4o-mini"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+# Azure OpenAI 服务
+[providers.azure-openai]
+name = "Azure OpenAI Service"
+base_url = "https://your-resource.openai.azure.com"
+api_key = "your-azure-openai-key-here"
+models = ["gpt-4", "gpt-35-turbo", "gpt-4-turbo"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+[providers.azure-openai.headers]
+"api-version" = "2024-02-01"
+
+# Anthropic Claude
+[providers.anthropic]
+name = "Anthropic Claude"
+base_url = "https://api.anthropic.com"
+api_key = "sk-ant-your-anthropic-key-here"
+models = ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+# 国内代理服务
+[providers.proxy-service]
+name = "Domestic Proxy Service"
+base_url = "https://your-proxy.com/v1"
+api_key = "your-proxy-api-key-here"
+models = ["gpt-4", "gpt-3.5-turbo", "claude-3-sonnet"]
+enabled = true
+timeout_seconds = 15
+max_retries = 2
+
+# ===== 定义面向客户的模型映射 =====
+
+# GPT-4 模型 - 使用加权随机负载均衡
+[models.gpt_4]
+name = "gpt-4"  # 对外暴露的模型名称
+strategy = "weighted_random"
+enabled = true
+
+# 后端配置：多个provider的gpt-4模型
+[[models.gpt_4.backends]]
+provider = "openai-primary"
+model = "gpt-4"
+weight = 0.5      # 50% 权重
+priority = 1      # 最高优先级
+enabled = true
+tags = ["premium", "stable"]
+
+[[models.gpt_4.backends]]
+provider = "openai-secondary"
+model = "gpt-4"
+weight = 0.3      # 30% 权重
+priority = 2
+enabled = true
+tags = ["backup"]
+
+[[models.gpt_4.backends]]
+provider = "azure-openai"
+model = "gpt-4"
+weight = 0.2      # 20% 权重
+priority = 3
+enabled = true
+tags = ["enterprise"]
+
+# GPT-4 Turbo 模型 - 使用轮询负载均衡
+[models.gpt_4_turbo]
+name = "gpt-4-turbo"
+strategy = "round_robin"
+enabled = true
+
+[[models.gpt_4_turbo.backends]]
+provider = "openai-primary"
+model = "gpt-4-turbo"
+weight = 1.0
+priority = 1
+enabled = true
+
+[[models.gpt_4_turbo.backends]]
+provider = "openai-secondary"
+model = "gpt-4-turbo"
+weight = 1.0
+priority = 2
+enabled = true
+
+[[models.gpt_4_turbo.backends]]
+provider = "azure-openai"
+model = "gpt-4-turbo"
+weight = 1.0
+priority = 3
+enabled = true
+
+# GPT-3.5 Turbo 模型 - 使用最低延迟负载均衡
+[models.gpt_3_5_turbo]
+name = "gpt-3.5-turbo"
+strategy = "least_latency"
+enabled = true
+
+[[models.gpt_3_5_turbo.backends]]
+provider = "openai-primary"
+model = "gpt-3.5-turbo"
+weight = 1.0
+priority = 1
+enabled = true
+
+[[models.gpt_3_5_turbo.backends]]
+provider = "openai-secondary"
+model = "gpt-3.5-turbo"
+weight = 1.0
+priority = 2
+enabled = true
+
+[[models.gpt_3_5_turbo.backends]]
+provider = "proxy-service"
+model = "gpt-3.5-turbo"
+weight = 1.0
+priority = 3
+enabled = true
+
+# Claude-3 模型 - 使用故障转移策略
+[models.claude_3]
+name = "claude-3"
+strategy = "failover"
+enabled = true
+
+[[models.claude_3.backends]]
+provider = "anthropic"
+model = "claude-3-sonnet-20240229"
+weight = 1.0
+priority = 1      # 最高优先级，优先使用
+enabled = true
+
+[[models.claude_3.backends]]
+provider = "proxy-service"
+model = "claude-3-sonnet"
+weight = 1.0
+priority = 2      # 备用选项
+enabled = true
+
+# 自定义快速聊天模型 - 混合多种模型
+[models.fast_chat]
+name = "fast-chat"
+strategy = "least_latency"
+enabled = true
+
+[[models.fast_chat.backends]]
+provider = "openai-primary"
+model = "gpt-3.5-turbo"
+weight = 0.4
+priority = 1
+enabled = true
+
+[[models.fast_chat.backends]]
+provider = "proxy-service"
+model = "gpt-3.5-turbo"
+weight = 0.6
+priority = 2
+enabled = true
+
+# 高级模型 - 仅使用最好的模型
+[models.premium]
+name = "premium"
+strategy = "weighted_random"
+enabled = true
+
+[[models.premium.backends]]
+provider = "openai-primary"
+model = "gpt-4o"
+weight = 0.7
+priority = 1
+enabled = true
+
+[[models.premium.backends]]
+provider = "anthropic"
+model = "claude-3-opus-20240229"
+weight = 0.3
+priority = 2
+enabled = true
+
+# 经济型模型 - 成本优化
+[models.economy]
+name = "economy"
+strategy = "weighted_random"
+enabled = true
+
+[[models.economy.backends]]
+provider = "proxy-service"
+model = "gpt-3.5-turbo"
+weight = 0.8
+priority = 1
+enabled = true
+
+[[models.economy.backends]]
+provider = "openai-secondary"
+model = "gpt-3.5-turbo"
+weight = 0.2
+priority = 2
+enabled = true
+
+# 测试模型 - 用于开发和测试
+[models.test]
+name = "test"
+strategy = "random"
+enabled = false  # 默认禁用，需要时启用
+
+[[models.test.backends]]
+provider = "proxy-service"
+model = "gpt-3.5-turbo"
+weight = 1.0
+priority = 1
+enabled = true

@@ -1,0 +1,36 @@
+[package]
+name = "berry-api-api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+axum = "0.8.4"
+axum-extra = { version = "0.10.1", features = ["typed-header"] }
+bytes = "1.10.1"
+chrono = { version = "0.4.41", features = ["serde"] }
+eventsource-stream = "0.2.3"
+futures = "0.3.31"
+headers = "0.4.0"
+rand = "0.8"
+reqwest = { version = "0.12.15", features = [
+    "stream",
+    "json",
+    "http2",
+    "charset",
+    "system-proxy",
+    "rustls-tls",
+], default-features = false }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+thiserror = "2.0.12"
+tokio = { version = "1.45.0", features = ["full"] }
+tokio-stream = { version = "0.1.17", features = ["io-util"] }
+tokio-util = "0.7.15"
+toml = "0.8.23"
+tower-http = { version = "0.6.4", features = ["fs", "trace"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+
+[dev-dependencies]
+axum-test = "17.3.0"

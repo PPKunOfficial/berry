@@ -20,7 +20,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceFolder}/.env"
         },
         {
             "type": "lldb",
@@ -36,6 +37,25 @@
                 "filter": {
                     "name": "berry-api",
                     "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'berry_api_api'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=berry-api-api"
+                ],
+                "filter": {
+                    "name": "berry_api_api",
+                    "kind": "lib"
                 }
             },
             "args": [],

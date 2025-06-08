@@ -1,0 +1,44 @@
+# Rust 构建产物
+target/
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# 文档
+*.md
+docs/
+Usage_Guide/
+
+# 开发文件
+dev_tmp/
+examples/
+test_*.sh
+debug_demo.sh
+
+# 日志
+*.log
+logs/
+
+# 配置文件（会被挂载）
+config.toml
+config_*.toml
+
+# Docker 文件
+docker-compose*.yml
+.dockerignore
+
+# 临时文件
+*.tmp
+*.temp

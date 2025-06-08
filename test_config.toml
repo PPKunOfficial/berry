@@ -1,0 +1,43 @@
+# 测试配置文件 - 用于演示和测试
+[settings]
+health_check_interval_seconds = 60
+request_timeout_seconds = 10
+max_retries = 2
+circuit_breaker_failure_threshold = 3
+circuit_breaker_timeout_seconds = 30
+# 新增的高级健康检查配置
+recovery_check_interval_seconds = 120  # 不健康provider的恢复检查间隔
+max_internal_retries = 2               # 内部重试次数，避免直接给用户报错
+health_check_timeout_seconds = 10      # 健康检查请求超时时间
+
+# 测试用户令牌
+[users.test-user]
+name = "Test User"
+token = "test-token-123"
+allowed_models = ["test-model"]
+enabled = true
+tags = ["test"]
+
+# 测试Provider - 使用httpbin作为测试端点
+[providers.test-provider]
+name = "Test Provider"
+base_url = "https://httpbin.org"
+api_key = "test-api-key"
+models = ["test-model"]
+enabled = true
+timeout_seconds = 10
+max_retries = 2
+
+# 测试模型映射
+[models.test_model]
+name = "test-model"
+strategy = "weighted_random"
+enabled = true
+
+[[models.test_model.backends]]
+provider = "test-provider"
+model = "test-model"
+weight = 1.0
+priority = 1
+enabled = true
+tags = ["test"]

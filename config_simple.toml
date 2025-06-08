@@ -1,0 +1,163 @@
+# 简化的配置示例 - 直接在TOML中配置API密钥
+
+[settings]
+health_check_interval_seconds = 30
+request_timeout_seconds = 30
+max_retries = 3
+circuit_breaker_failure_threshold = 5
+circuit_breaker_timeout_seconds = 60
+
+# ===== 用户令牌配置 =====
+
+# 管理员用户
+[users.admin]
+name = "Admin User"
+token = "berry-admin-123456"
+allowed_models = []  # 允许访问所有模型
+enabled = true
+tags = ["admin"]
+
+# 普通用户 - 只能访问基础模型
+[users.user1]
+name = "Regular User"
+token = "berry-user-789012"
+allowed_models = ["gpt_3_5_turbo", "fast_model"]  # 注意：使用配置中定义的模型ID
+enabled = true
+tags = ["user"]
+
+# ===== Provider 配置 =====
+
+# OpenAI 主账户
+[providers.openai-main]
+name = "OpenAI Main Account"
+base_url = "https://api.openai.com/v1"
+api_key = "sk-your-openai-api-key-here"  # 直接配置API密钥
+models = ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+# OpenAI 备用账户
+[providers.openai-backup]
+name = "OpenAI Backup Account"
+base_url = "https://api.openai.com/v1"
+api_key = "sk-your-backup-openai-key-here"
+models = ["gpt-4", "gpt-3.5-turbo"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+# Azure OpenAI
+[providers.azure]
+name = "Azure OpenAI"
+base_url = "https://your-resource.openai.azure.com"
+api_key = "your-azure-api-key-here"
+models = ["gpt-4", "gpt-35-turbo"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+[providers.azure.headers]
+"api-version" = "2024-02-01"
+
+# ===== 面向客户的模型配置 =====
+
+# GPT-4 模型 - 使用加权随机负载均衡
+[models.gpt_4]
+name = "gpt-4"
+strategy = "weighted_random"
+enabled = true
+
+[[models.gpt_4.backends]]
+provider = "openai-main"
+model = "gpt-4"
+weight = 0.7    # 主账户70%权重
+priority = 1
+enabled = true
+
+[[models.gpt_4.backends]]
+provider = "openai-backup"
+model = "gpt-4"
+weight = 0.2    # 备用账户20%权重
+priority = 2
+enabled = true
+
+[[models.gpt_4.backends]]
+provider = "azure"
+model = "gpt-4"
+weight = 0.1    # Azure 10%权重
+priority = 3
+enabled = true
+
+# GPT-3.5 模型 - 使用轮询负载均衡
+[models.gpt_3_5_turbo]
+name = "gpt-3.5-turbo"
+strategy = "round_robin"
+enabled = true
+
+[[models.gpt_3_5_turbo.backends]]
+provider = "openai-main"
+model = "gpt-3.5-turbo"
+weight = 1.0
+priority = 1
+enabled = true
+
+[[models.gpt_3_5_turbo.backends]]
+provider = "openai-backup"
+model = "gpt-3.5-turbo"
+weight = 1.0
+priority = 2
+enabled = true
+
+[[models.gpt_3_5_turbo.backends]]
+provider = "azure"
+model = "gpt-35-turbo"
+weight = 1.0
+priority = 3
+enabled = true
+
+# 自定义快速模型 - 故障转移策略
+[models.fast_model]
+name = "fast-model"
+strategy = "failover"
+enabled = true
+
+[[models.fast_model.backends]]
+provider = "openai-main"
+model = "gpt-3.5-turbo"
+weight = 1.0
+priority = 1    # 最高优先级
+enabled = true
+
+[[models.fast_model.backends]]
+provider = "azure"
+model = "gpt-35-turbo"
+weight = 1.0
+priority = 2    # 备用
+enabled = true
+
+# 智能负载均衡模型 - 权重故障转移策略
+[models.smart_model]
+name = "smart-model"
+strategy = "weighted_failover"  # 新的负载均衡策略
+enabled = true
+
+[[models.smart_model.backends]]
+provider = "openai-main"
+model = "gpt-4"
+weight = 0.6    # 主要服务60%权重
+priority = 1    # 最高优先级
+enabled = true
+
+[[models.smart_model.backends]]
+provider = "openai-backup"
+model = "gpt-4"
+weight = 0.3    # 备用服务30%权重
+priority = 2    # 中等优先级
+enabled = true
+
+[[models.smart_model.backends]]
+provider = "azure"
+model = "gpt-4"
+weight = 0.1    # Azure服务10%权重
+priority = 3    # 最低优先级
+enabled = true
