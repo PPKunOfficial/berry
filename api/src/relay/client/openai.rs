@@ -1,5 +1,6 @@
 use reqwest::Client;
 use serde_json::Value;
+use std::time::Duration;
 use super::types::{ClientError, ClientResponse};
 
 const OPENAI_API_URL: &str = "https://aigc.x-see.cn/v1";
@@ -12,15 +13,33 @@ pub struct OpenAIClient {
 
 impl OpenAIClient {
     pub fn new() -> Self {
+        Self::with_timeout(Duration::from_secs(30)) // 默认30秒超时
+    }
+
+    pub fn with_base_url(base_url: String) -> Self {
+        Self::with_base_url_and_timeout(base_url, Duration::from_secs(30))
+    }
+
+    pub fn with_timeout(timeout: Duration) -> Self {
+        let client = Client::builder()
+            .timeout(timeout)
+            .build()
+            .expect("Failed to create HTTP client");
+
         Self {
-            client: Client::new(),
+            client,
             base_url: OPENAI_API_URL.to_string(),
         }
     }
 
-    pub fn with_base_url(base_url: String) -> Self {
+    pub fn with_base_url_and_timeout(base_url: String, connect_timeout: Duration) -> Self {
+        let client = Client::builder()
+            .connect_timeout(connect_timeout)  // 只设置连接超时，不限制总请求时间
+            .build()
+            .expect("Failed to create HTTP client");
+
         Self {
-            client: Client::new(),
+            client,
             base_url,
         }
     }

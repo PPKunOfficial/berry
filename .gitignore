@@ -25,3 +25,4 @@ target/
 dev_tmp/
 .env
 config.toml
+config_ltest.toml

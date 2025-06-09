@@ -164,14 +164,46 @@ impl LoadBalanceService {
                                attempt + 1, max_retries + 1, e);
                         continue;
                     } else {
-                        debug!("All backend selection attempts failed");
-                        return Err(e);
+                        // 最后一次尝试失败，提供详细的错误信息
+                        error!(
+                            "All {} backend selection attempts failed for model '{}'. Final error: {}",
+                            max_retries + 1,
+                            model_name,
+                            e
+                        );
+
+                        // 检查是否是我们的详细错误类型
+                        if let Some(detailed_error) = e.downcast_ref::<crate::loadbalance::selector::BackendSelectionError>() {
+                            // 如果是详细错误，直接返回
+                            return Err(anyhow::anyhow!(
+                                "Backend selection failed after {} internal retries for model '{}': {}. Total backends: {}, Enabled: {}, Healthy: {}. Please check backend health status or contact system administrator.",
+                                max_retries + 1,
+                                detailed_error.model_name,
+                                detailed_error.error_message,
+                                detailed_error.total_backends,
+                                detailed_error.enabled_backends,
+                                detailed_error.healthy_backends
+                            ));
+                        } else {
+                            // 如果是其他类型的错误，包装成详细错误
+                            return Err(anyhow::anyhow!(
+                                "Backend selection failed after {} internal retries for model '{}': {}. This error occurred during the load balancing process. Please check your configuration and backend health status.",
+                                max_retries + 1,
+                                model_name,
+                                e
+                            ));
+                        }
                     }
                 }
             }
         }
 
-        anyhow::bail!("Failed to select backend after {} attempts", max_retries + 1)
+        // 这行代码理论上不应该被执行到，但为了安全起见保留
+        anyhow::bail!(
+            "Unexpected error: Failed to select backend after {} attempts for model '{}'. This indicates a logic error in the retry mechanism.",
+            max_retries + 1,
+            model_name
+        )
     }
 
     /// 记录请求结果
@@ -183,13 +215,64 @@ impl LoadBalanceService {
     ) {
         match result {
             RequestResult::Success { latency } => {
-                self.manager.record_success(provider, model, latency);
-                debug!(
-                    "Recorded success for {}:{} with latency {}ms",
-                    provider,
-                    model,
-                    latency.as_millis()
-                );
+                let backend_key = format!("{}:{}", provider, model);
+
+                // 检查backend的计费模式
+                let config = self.manager.get_config();
+                let mut backend_billing_mode = crate::config::model::BillingMode::PerToken; // 默认值
+                let mut found_backend = false;
+
+                // 查找对应的backend配置
+                for (_, model_mapping) in &config.models {
+                    for backend in &model_mapping.backends {
+                        if backend.provider == provider && backend.model == model {
+                            backend_billing_mode = backend.billing_mode.clone();
+                            found_backend = true;
+                            break;
+                        }
+                    }
+                    if found_backend {
+                        break;
+                    }
+                }
+
+                if !found_backend {
+                    warn!("Backend configuration not found for {}:{}, using default per-token billing", provider, model);
+                }
+
+                match backend_billing_mode {
+                    crate::config::model::BillingMode::PerToken => {
+                        // 按token计费：正常记录成功
+                        self.manager.record_success(provider, model, latency);
+                        debug!(
+                            "Recorded success for per-token backend {}:{} with latency {}ms",
+                            provider,
+                            model,
+                            latency.as_millis()
+                        );
+                    }
+                    crate::config::model::BillingMode::PerRequest => {
+                        // 按请求计费：检查是否在不健康列表中
+                        if self.metrics.is_in_unhealthy_list(&backend_key) {
+                            // 不健康的按请求计费backend：使用被动验证
+                            self.metrics.record_passive_success(&backend_key,
+                                self.get_backend_original_weight(provider, model).unwrap_or(1.0));
+                            debug!(
+                                "Recorded passive success for per-request backend {}:{} (weight recovery)",
+                                provider, model
+                            );
+                        } else {
+                            // 健康的按请求计费backend：正常记录
+                            self.manager.record_success(provider, model, latency);
+                            debug!(
+                                "Recorded success for healthy per-request backend {}:{} with latency {}ms",
+                                provider,
+                                model,
+                                latency.as_millis()
+                            );
+                        }
+                    }
+                }
             }
             RequestResult::Failure { error } => {
                 self.manager.record_failure(provider, model);
@@ -199,6 +282,32 @@ impl LoadBalanceService {
                     model,
                     error
                 );
+
+                // 对于按请求计费的backend，失败时需要初始化权重恢复状态
+                let config = self.manager.get_config();
+                let mut backend_billing_mode = crate::config::model::BillingMode::PerToken; // 默认值
+                let mut found_backend = false;
+
+                // 查找对应的backend配置
+                for (_, model_mapping) in &config.models {
+                    for backend in &model_mapping.backends {
+                        if backend.provider == provider && backend.model == model {
+                            backend_billing_mode = backend.billing_mode.clone();
+                            found_backend = true;
+                            break;
+                        }
+                    }
+                    if found_backend {
+                        break;
+                    }
+                }
+
+                if found_backend && backend_billing_mode == crate::config::model::BillingMode::PerRequest {
+                    let backend_key = format!("{}:{}", provider, model);
+                    let original_weight = self.get_backend_original_weight(provider, model).unwrap_or(1.0);
+                    self.metrics.initialize_per_request_recovery(&backend_key, original_weight);
+                    debug!("Initialized per-request recovery for {}:{} with 10% weight", provider, model);
+                }
             }
         }
     }
@@ -250,6 +359,22 @@ impl LoadBalanceService {
     /// 检查服务是否正在运行
     pub async fn is_running(&self) -> bool {
         *self.is_running.read().await
+    }
+
+    /// 获取backend的原始权重
+    fn get_backend_original_weight(&self, provider: &str, model: &str) -> Option<f64> {
+        let config = self.manager.get_config();
+
+        // 遍历所有模型映射，找到匹配的backend
+        for (_, model_mapping) in &config.models {
+            for backend in &model_mapping.backends {
+                if backend.provider == provider && backend.model == model {
+                    return Some(backend.weight);
+                }
+            }
+        }
+
+        None
     }
 }
 
@@ -322,7 +447,7 @@ impl ServiceHealth {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::model::{Provider, ModelMapping, LoadBalanceStrategy, GlobalSettings};
+    use crate::config::model::{Provider, ModelMapping, LoadBalanceStrategy, GlobalSettings, BillingMode};
     use std::collections::HashMap;
 
     fn create_test_config() -> Config {
@@ -348,6 +473,7 @@ mod tests {
                 priority: 1,
                 enabled: true,
                 tags: vec![],
+                billing_mode: BillingMode::PerToken,
             }],
             strategy: LoadBalanceStrategy::WeightedRandom,
             enabled: true,

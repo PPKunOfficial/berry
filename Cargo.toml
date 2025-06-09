@@ -9,4 +9,4 @@ members = [".", "api"]
 [dependencies]
 berry-api-api = { path = "api" }
 tokio = { version = "1.45.0", features = ["full"] }
-anyhow = "1.0"
+

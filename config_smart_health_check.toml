@@ -1,0 +1,155 @@
+# Berry API 智能健康检查配置示例
+# 演示按计费模式区分的健康检查机制
+
+[settings]
+health_check_interval_seconds = 30
+request_timeout_seconds = 30
+max_retries = 3
+circuit_breaker_failure_threshold = 3
+circuit_breaker_timeout_seconds = 60
+recovery_check_interval_seconds = 120
+max_internal_retries = 3
+health_check_timeout_seconds = 15
+
+# Provider配置 - 不再包含计费模式，计费模式现在在Backend级别配置
+[providers.openai]
+name = "OpenAI Provider"
+base_url = "https://api.openai.com/v1"
+api_key = "sk-your-openai-key-here"
+models = ["gpt-4", "gpt-3.5-turbo"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+[providers.anthropic]
+name = "Anthropic Provider"
+base_url = "https://api.anthropic.com"
+api_key = "sk-ant-your-key-here"
+models = ["claude-3-sonnet", "claude-3-haiku"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+[providers.custom_provider]
+name = "Custom Provider"
+base_url = "https://api.custom-provider.com/v1"
+api_key = "your-custom-api-key"
+models = ["custom-gpt-4", "custom-claude"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+[providers.expensive_provider]
+name = "Expensive Provider"
+base_url = "https://api.expensive-provider.com/v1"
+api_key = "your-expensive-api-key"
+models = ["premium-model-1", "premium-model-2"]
+enabled = true
+timeout_seconds = 30
+max_retries = 3
+
+# 测试provider（使用httpbin）
+[providers.test_provider]
+name = "Test Provider"
+base_url = "https://httpbin.org"
+api_key = "test-key"
+models = ["test-model", "test-model-pr"]
+enabled = true
+timeout_seconds = 10
+max_retries = 2
+
+# 智能模型映射 - 使用SmartWeightedFailover策略
+[models.smart_gpt4]
+name = "smart-gpt-4"
+strategy = "smart_weighted_failover"  # 新的智能权重故障转移策略
+enabled = true
+
+[[models.smart_gpt4.backends]]
+provider = "openai"
+model = "gpt-4"
+weight = 0.5  # 50%权重
+priority = 1
+enabled = true
+tags = ["per-token", "primary"]
+billing_mode = "per_token"  # 按token计费 - 执行主动健康检查
+
+[[models.smart_gpt4.backends]]
+provider = "custom_provider"
+model = "custom-gpt-4"
+weight = 0.3  # 30%权重，不健康时降至10%，逐步恢复
+priority = 2
+enabled = true
+tags = ["per-request", "backup"]
+billing_mode = "per_request"  # 按请求计费 - 跳过主动检查，使用被动验证
+
+[[models.smart_gpt4.backends]]
+provider = "expensive_provider"
+model = "premium-model-1"
+weight = 0.2  # 20%权重，不健康时降至10%，逐步恢复
+priority = 3
+enabled = true
+tags = ["per-request", "premium"]
+billing_mode = "per_request"  # 按请求计费 - 跳过主动检查，使用被动验证
+
+# 混合模型 - 包含不同计费模式的provider
+[models.mixed_claude]
+name = "mixed-claude"
+strategy = "smart_weighted_failover"
+enabled = true
+
+[[models.mixed_claude.backends]]
+provider = "anthropic"
+model = "claude-3-sonnet"
+weight = 0.6  # 主要backend
+priority = 1
+enabled = true
+tags = ["per-token", "primary"]
+billing_mode = "per_token"  # 按token计费
+
+[[models.mixed_claude.backends]]
+provider = "custom_provider"
+model = "custom-claude"
+weight = 0.4  # 备用backend，支持权重恢复
+priority = 2
+enabled = true
+tags = ["per-request", "backup"]
+billing_mode = "per_request"  # 按请求计费
+
+# 测试模型
+[models.test_model]
+name = "test-model"
+strategy = "smart_weighted_failover"
+enabled = true
+
+[[models.test_model.backends]]
+provider = "test_provider"
+model = "test-model"
+weight = 0.7
+priority = 1
+enabled = true
+tags = ["test", "per-token"]
+billing_mode = "per_token"  # 按token计费
+
+[[models.test_model.backends]]
+provider = "test_provider"
+model = "test-model-pr"
+weight = 0.3
+priority = 2
+enabled = true
+tags = ["test", "per-request"]
+billing_mode = "per_request"  # 按请求计费
+
+# 用户配置
+[users.demo_user]
+name = "Demo User"
+token = "demo-token-12345"
+allowed_models = ["smart-gpt-4", "mixed-claude", "test-model"]
+enabled = true
+tags = ["demo", "testing"]
+
+[users.admin_user]
+name = "Admin User"
+token = "admin-token-67890"
+allowed_models = []  # 空表示允许所有模型
+enabled = true
+tags = ["admin", "full-access"]

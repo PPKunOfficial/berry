@@ -1,4 +1,4 @@
-use berry_api_api::config::model::{Config, Provider, ModelMapping, Backend, LoadBalanceStrategy, GlobalSettings};
+use berry_api_api::config::model::{Config, Provider, ModelMapping, Backend, LoadBalanceStrategy, GlobalSettings, BillingMode};
 use berry_api_api::loadbalance::LoadBalanceService;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -43,6 +43,7 @@ fn create_demo_config() -> Config {
                 priority: 1,
                 enabled: true,
                 tags: vec![],
+                billing_mode: BillingMode::PerToken,
             },
         ],
         strategy: LoadBalanceStrategy::WeightedFailover,
@@ -59,6 +60,7 @@ fn create_demo_config() -> Config {
                 priority: 1,
                 enabled: true,
                 tags: vec![],
+                billing_mode: BillingMode::PerToken,
             },
         ],
         strategy: LoadBalanceStrategy::WeightedFailover,

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   berry-api:
     build:
@@ -14,5 +12,5 @@ services:
       - CONFIG_PATH=/app/config.toml
     volumes:
       # 挂载配置文件
-      - config.toml:/app/config.toml:ro
+      - ./config.toml:/app/config.toml:ro
     restart: unless-stopped

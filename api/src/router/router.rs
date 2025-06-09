@@ -1,12 +1,16 @@
-use axum::{Router, routing::{get, post}};
-use tower_http::trace::TraceLayer;
 use crate::app::AppState;
+use crate::static_files::{serve_index, serve_static_file};
+use axum::{
+    Router,
+    routing::{get, post},
+};
+use tower_http::trace::TraceLayer;
 
 use super::{
-    health::{detailed_health_check, simple_health_check},
-    models::{list_models, list_models_v1},
-    metrics::metrics,
     chat::chat_completions,
+    health::{detailed_health_check, simple_health_check},
+    metrics::metrics,
+    models::{list_models, list_models_v1},
 };
 
 /// 创建应用路由
@@ -17,6 +21,9 @@ pub fn create_app_router() -> Router<AppState> {
         .route("/metrics", get(metrics))
         .route("/models", get(list_models))
         .nest("/v1", create_v1_routes())
+        // 静态文件路由 - 使用嵌入的文件
+        .route("/status", get(serve_index))
+        .route("/status/{*path}", get(serve_static_file))
         .layer(TraceLayer::new_for_http())
 }
 

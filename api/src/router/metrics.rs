@@ -1,4 +1,5 @@
 use crate::app::AppState;
+use crate::static_files::get_static_files_info;
 use axum::{
     extract::State,
     response::IntoResponse,
@@ -9,6 +10,7 @@ use serde_json::json;
 /// 指标处理器
 pub async fn metrics(State(state): State<AppState>) -> impl IntoResponse {
     let health = state.load_balancer.get_service_health().await;
+    let static_files_info = get_static_files_info();
 
     Json(json!({
         "service": {
@@ -28,6 +30,7 @@ pub async fn metrics(State(state): State<AppState>) -> impl IntoResponse {
             "health_ratio": health.health_summary.model_health_ratio,
             "details": health.model_stats
         },
+        "static_files": static_files_info,
         "timestamp": chrono::Utc::now().to_rfc3339()
     }))
 }

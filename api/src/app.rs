@@ -54,10 +54,6 @@ pub fn create_app(state: AppState) -> Router {
     create_app_router().with_state(state)
 }
 
-
-
-
-
 /// 启动应用服务器
 pub async fn start_server() -> Result<()> {
     // 初始化日志 - 完全依赖RUST_LOG环境变量
@@ -68,6 +64,8 @@ pub async fn start_server() -> Result<()> {
         .init();
 
     info!("Starting Berry API server...");
+    info!("Build Time: {}", env!("VERGEN_BUILD_TIMESTAMP"));
+    info!("Git Commit: {}", env!("VERGEN_GIT_SHA"));
 
     // 创建应用状态
     let app_state = match AppState::new().await {
@@ -90,6 +88,7 @@ pub async fn start_server() -> Result<()> {
     info!("Available endpoints:");
     info!("  GET  /              - API information");
     info!("  GET  /health        - Health check");
+    info!("  GET  /status        - Service status page");
     info!("  GET  /metrics       - Service metrics");
     info!("  GET  /models        - List available models");
     info!("  POST /v1/chat/completions - Chat completions (OpenAI compatible)");
@@ -149,8 +148,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_index_endpoint() {
-        use axum::routing::get;
         use crate::router::router::index;
+        use axum::routing::get;
 
         // 创建一个简单的测试，不需要真实的配置
         let app = Router::new().route("/", get(index));

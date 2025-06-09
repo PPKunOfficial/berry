@@ -4,15 +4,33 @@ Berry API 是一个高性能的AI服务负载均衡网关，支持多种AI服务
 
 ## 📚 文档导航
 
-- **[📋 文档索引](DOCUMENTATION_INDEX.md)** - 所有文档的导航页面
-- **[📖 详细使用指南](USAGE_GUIDE.md)** - 高级配置和最佳实践
-- **[🔌 API接口参考](API_REFERENCE.md)** - 完整的API文档
-- **[⚙️ 配置示例集合](CONFIGURATION_EXAMPLES.md)** - 各种场景的配置示例
+## 📚 文档导航
+
+### 核心文档
+- **[📋 文档索引](docs/DOCUMENTATION_INDEX.md)** - 所有文档的导航页面
+- **[📖 使用指南](docs/USAGE_GUIDE.md)** - 基础使用和最佳实践
+- **[🔌 API参考](docs/API_REFERENCE.md)** - 完整的API文档
+- **[🔑 认证指南](docs/AUTH_GUIDE.md)** - 用户认证和权限管理
+- **[🔄 API密钥更新](docs/API_KEY_UPDATE.md)** - 如何更新API密钥
+
+### 配置指南
+- **[⚙️ 配置示例](docs/CONFIGURATION_EXAMPLES.md)** - 各种场景的配置示例
+- **[🛠️ 调试日志](docs/DEBUG_LOGGING_GUIDE.md)** - 调试和日志配置
+- **[🆙 健康检查升级](docs/HEALTH_CHECK_UPGRADE.md)** - 智能健康检查功能
+
+### Docker部署
+- **[🐳 Docker指南](docs/DOCKER_README.md)** - Docker容器化部署
+- **[📦 容器编排](docker-compose.yml)** - Docker Compose配置
+
+### 实现细节
+- **[🧠 智能健康检查](docs/SMART_HEALTH_CHECK.md)** - 健康检查算法详解
+- **[🏗️ 实现总结](docs/IMPLEMENTATION_SUMMARY.md)** - 架构设计概述
+- **[✅ 最终实现](docs/FINAL_IMPLEMENTATION.md)** - 完整实现细节
+- **[📝 项目总结](docs/FINAL_SUMMARY.md)** - 项目回顾与总结
 
 ## 🚀 特性
 
 ### 核心功能
-- **多Provider支持**: 支持OpenAI、Azure OpenAI、Anthropic等多种AI服务提供商
 - **智能负载均衡**: 支持加权随机、轮询、最低延迟、故障转移等多种负载均衡策略
 - **健康检查**: 自动监控后端服务健康状态，实现故障自动切换
 - **用户认证**: 基于Token的用户认证和权限管理
